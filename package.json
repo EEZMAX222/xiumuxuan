@@ -5,7 +5,7 @@
   "type": "module",
   "description": "休沐选 — 关于「这家厂子到底双休吗」的众包情报站。零运行时依赖。",
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=23.4.0"
   },
   "scripts": {
     "start": "node src/server.js",

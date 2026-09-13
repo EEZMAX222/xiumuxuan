@@ -48,7 +48,7 @@
 
 ## 快速开始
 
-需要 **Node.js ≥ 22.5**（用到内置的 `node:sqlite`）。**不需要 `npm install`。**
+需要 **Node.js ≥ 23.4**（用到内置的 `node:sqlite`，这是它免 `--experimental-sqlite` 标志的最低版本；开发与测试在 Node 24 上完成）。**不需要 `npm install`。**
 
 ```bash
 # 启动（首次会自动建库、建表）

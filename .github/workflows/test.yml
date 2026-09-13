@@ -1,0 +1,30 @@
+# 每次推送与 PR 都跑一遍全部测试。
+#
+# 项目零运行时依赖，因此不需要 npm install —— 直接跑测试即可。
+# 测试会自己起一个用独立数据库的服务（端口 8788），跑完自动清理。
+
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: 环境信息
+        run: |
+          node -v
+          node -e "console.log('node:sqlite 可用:', typeof require('node:sqlite').DatabaseSync === 'function')"
+
+      - name: 运行全部测试（主流程 / 移动端 / 身份与权限）
+        run: npm test
