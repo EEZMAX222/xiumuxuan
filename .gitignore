@@ -27,3 +27,6 @@ Thumbs.db
 npm-debug.log*
 tmp-*
 test-out.txt
+
+# 本地发布脚本（依赖本机 gh 与凭据，不进仓库）
+publish-to-github.ps1
