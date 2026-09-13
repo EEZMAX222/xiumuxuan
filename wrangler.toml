@@ -1,0 +1,52 @@
+# ============================================================
+#  休沐选 · Cloudflare Workers 部署配置
+#  部署步骤见 docs/DEPLOY-CLOUDFLARE.md
+# ============================================================
+
+name = "xiumuxuan"
+main = "src/worker.js"
+
+# 建议使用 2024-09-23 之后的日期（Workers 的 Intl / 时区支持更完整）
+compatibility_date = "2024-11-06"
+
+# ------------------------------------------------------------
+# D1 数据库绑定
+#   创建后把 database_id 换成你自己的：
+#     npx wrangler d1 create xiumuxuan
+# ------------------------------------------------------------
+[[d1_databases]]
+binding = "DB"
+database_name = "xiumuxuan"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# ------------------------------------------------------------
+# 运行时变量
+# ------------------------------------------------------------
+[vars]
+# 被封锁的国家/地区码，逗号分隔。CN = 中国大陆（不含港澳台）
+BLOCKED_COUNTRIES = "CN"
+
+# 拿不到国家码时：fail-open = 放行，fail-closed = 拒绝
+# 挂 Cloudflare 代理（橙色云朵）时一定会拿到国家码，保持 fail-open 即可
+GEO_POLICY = "fail-open"
+
+# 本地 `wrangler dev` 调试用：允许 ?__geo=CN 模拟来源地区。
+# ⚠️ 部署到生产前必须改成 "0"，否则在缺少 CF 头时可被伪造绕过。
+GEO_DEBUG = "1"
+
+# 密码派生（PBKDF2-SHA256）的迭代次数。
+# Workers 免费版每次请求 CPU 上限约 10ms，而实测 100k 次在 Node 上约 11.5ms，
+# 因此这里降到 50000。若登录时报 1102（CPU 超限），再降到 25000。
+# 该值会随每个用户记录保存，调整它只影响之后新设密码的用户，不会锁住老用户。
+PBKDF2_ITERATIONS = "50000"
+
+# 注意：IP_SALT 属于敏感值，请用 secret 设置，不要写在这里：
+#   npx wrangler secret put IP_SALT
+
+# ------------------------------------------------------------
+# 可观测性（可选）
+# 部分套餐不支持 Workers Logs，若 `wrangler deploy` 因此报错，
+# 直接删掉下面这两行即可。
+# ------------------------------------------------------------
+# [observability]
+# enabled = true

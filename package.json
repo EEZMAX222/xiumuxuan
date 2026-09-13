@@ -1,0 +1,28 @@
+{
+  "name": "xiumuxuan",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "休沐选 — 关于「这家厂子到底双休吗」的众包情报站。零运行时依赖。",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "schema": "node scripts/gen-schema-sql.js",
+    "test": "node scripts/run-tests.js",
+    "test:smoke": "node scripts/smoke-test.js",
+    "test:auth": "node scripts/auth-test.js",
+    "reset-data": "node scripts/reset-data.js",
+    "tunnel": "powershell -ExecutionPolicy Bypass -File scripts/tunnel.ps1",
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "wrangler deploy",
+    "cf:db:local": "wrangler d1 execute xiumuxuan --local --file=./schema.sql",
+    "cf:db:remote": "wrangler d1 execute xiumuxuan --remote --file=./schema.sql"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "wrangler": "^3.99.0"
+  }
+}

@@ -1,0 +1,15 @@
+# 统一换行符，避免 Windows / macOS / Linux 协作时整文件 diff
+* text=auto eol=lf
+
+# 明确二进制
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.exe binary
+*.wav binary
+
+# 生成物：合并冲突时不做无意义的逐行比对
+schema.sql linguist-generated=true
