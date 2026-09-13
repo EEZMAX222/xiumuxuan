@@ -23,15 +23,15 @@ database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 # 运行时变量
 # ------------------------------------------------------------
 [vars]
-# 被封锁的国家/地区码，逗号分隔。CN = 中国大陆（不含港澳台）
+# 受限的国家/地区码，逗号分隔
 BLOCKED_COUNTRIES = "CN"
 
 # 拿不到国家码时：fail-open = 放行，fail-closed = 拒绝
 # 挂 Cloudflare 代理（橙色云朵）时一定会拿到国家码，保持 fail-open 即可
 GEO_POLICY = "fail-open"
 
-# 本地 `wrangler dev` 调试用：允许 ?__geo=CN 模拟来源地区。
-# ⚠️ 部署到生产前必须改成 "0"，否则在缺少 CF 头时可被伪造绕过。
+# 本地调试用：允许用 ?__geo= 模拟来源地区。
+# 部署到生产前必须改成 "0"。
 GEO_DEBUG = "1"
 
 # 密码派生（PBKDF2-SHA256）的迭代次数。

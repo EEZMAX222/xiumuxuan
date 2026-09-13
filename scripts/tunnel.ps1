@@ -9,8 +9,7 @@
 #      或  npm run tunnel
 #
 #  说明：
-#    - 走 Cloudflare 边缘，所以服务器能拿到真实的 CF-IPCountry，
-#      中国大陆 IP 会看到 403（这是本站的预期行为）。
+#    - 走 Cloudflare 边缘，服务器能拿到真实的 CF-IPCountry。
 #    - 这是 Cloudflare 的「quick tunnel」：地址随机、每次启动都变、
 #      官方不保证可用时长，关掉窗口就失效。长期使用请部署到
 #      Cloudflare Workers，见 docs/DEPLOY-CLOUDFLARE.md
@@ -78,7 +77,6 @@ if ($publicUrl) {
   Write-Host '  ============================================================' -ForegroundColor Green
   Write-Host ''
   Write-Host '  提醒：' -ForegroundColor Cyan
-  Write-Host '   · 中国大陆 IP 打开会直接拿到 403（一个不含任何说明的响应）—— 这是本站的设计目标。'
   Write-Host '   · 地址每次启动都会变，官方不保证在线时长。'
   Write-Host '   · 按 Ctrl+C 停止；关掉这个窗口地址就失效。'
   Write-Host '   · 想要固定地址，请部署到 Cloudflare Workers：docs/DEPLOY-CLOUDFLARE.md'

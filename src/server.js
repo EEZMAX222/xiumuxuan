@@ -25,7 +25,7 @@ function buildEnv() {
   return {
     ...process.env,
     NODE_ENV: isProd ? 'production' : 'development',
-    // 封锁的国家/地区（逗号分隔）。CN = 中国大陆
+    // 受限的国家/地区码（逗号分隔）
     BLOCKED_COUNTRIES: process.env.BLOCKED_COUNTRIES ?? 'CN',
     // fail-open：拿不到国家码时放行（配合 Cloudflare 代理使用）
     // fail-closed：拿不到国家码时也拒绝（纯自托管、不希望漏放时使用）
@@ -132,7 +132,7 @@ async function main() {
     console.log('  ---------------------------------------------')
     console.log(`  本地地址   http://127.0.0.1:${PORT}`)
     console.log(`  数据库     ${DB_PATH}`)
-    console.log(`  封锁地区   ${env.BLOCKED_COUNTRIES}  (策略 GEO_POLICY=${env.GEO_POLICY})`)
+    console.log(`  受限地区   ${env.BLOCKED_COUNTRIES || '（未设置）'}  (策略 ${env.GEO_POLICY})`)
     console.log(`  密码派生   PBKDF2-SHA256 × ${resolveIterations(env)}`)
     console.log(`  地区模拟   ${debugOn ? '已开启 → 用 ?__geo=CN 预览拦截（403）' : '已关闭'}`)
     console.log('')

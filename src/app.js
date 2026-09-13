@@ -940,7 +940,7 @@ export function createApp({ db, env = {} }) {
   async function handle(request) {
     const url = new URL(request.url)
 
-    // 1) 地域封锁（中国大陆 CN）
+    // 1) 来源地区访问控制
     const geo = checkGeo(request, env)
     if (!geo.allowed) {
       // 客户端只拿到一个不含任何信息的 403；诊断线索留在服务端日志里

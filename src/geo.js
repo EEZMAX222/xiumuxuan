@@ -1,14 +1,14 @@
 /**
- * 地域访问控制：禁止中国大陆（CN）IP 访问本站。
+ * 来源地区访问控制。
  *
- * 三层防护，逐层收紧：
- *   1) Cloudflare WAF 自定义规则（网络边缘）—— 最彻底，且不消耗 Workers 配额
- *      见 docs/DEPLOY-CLOUDFLARE.md
- *   2) 本模块：读取 Cloudflare 注入的国家码（request.cf.country / CF-IPCountry）
- *   3) 未经过 Cloudflare 时按 GEO_POLICY 决定 fail-open 还是 fail-closed
+ * 按请求来源的国家/地区码决定是否放行，读取顺序：
+ *   1) Cloudflare Workers / Pages：request.cf.country（边缘注入，客户端无法伪造）
+ *   2) 挂在 Cloudflare 代理之后的站点：CF-IPCountry 请求头
+ *   3) 自建反代：X-Country-Code 请求头
+ *   4) 本地调试：GEO_DEBUG=1 时可用 ?__geo= 覆盖
  *
- * Cloudflare 对香港返回 HK、澳门 MO、台湾 TW，因此封锁 "CN" 精确对应
- * 「中国大陆」，不会误伤港澳台。
+ * 受限地区由 BLOCKED_COUNTRIES 配置（逗号分隔的国家码）；
+ * 拿不到国家码时的行为由 GEO_POLICY 决定（fail-open / fail-closed）。
  *
  * 本模块只使用 Web 标准 API，Node 与 Cloudflare Workers 通用。
  */
@@ -72,7 +72,7 @@ export function isPrivateOrLocalIp(ip) {
 }
 
 /**
- * 判断本次请求是否应当被地域封锁。
+ * 判断本次请求是否应当被拦截。
  * @returns {{ allowed: boolean, country: string|null, ip: string, reason?: string }}
  */
 export function checkGeo(request, env = {}) {
@@ -102,16 +102,15 @@ export function checkGeo(request, env = {}) {
 }
 
 /**
- * 被封锁时的响应。
+ * 命中受限地区时的响应。
  *
  * 刻意做成一个「什么都不说」的 403：
  *   - 不渲染站点名称、用途、立场
  *   - 不回显检测到的地区码
  *   - 不给任何解释或建议
  *
- * 原因很简单：封锁页上的每一句说明，对来访者都是情报。
- * 被拦下的人不需要知道这里是什么站、为什么拦——越少越好。
- * 站长自己需要诊断时，看服务端日志即可（app.js 会记录被封的国家码与路径）。
+ * 原因很简单：拦截页上的每一句说明，对来访者都是情报。
+ * 站长自己需要诊断时看服务端日志即可（app.js 会记录国家码与路径）。
  */
 export function blockedResponse() {
   return new Response('403 Forbidden', {

@@ -1,6 +1,6 @@
 /**
  * 端到端冒烟测试：覆盖搜索、厂家、产品关联、双休情报上传、评论、
- * 地区封锁、XSS 转义、蜜罐与限流。
+ * 地区拦截、XSS 转义、蜜罐与限流。
  *
  * 用法：
  *   1) 先启动服务器：npm start
@@ -74,18 +74,18 @@ async function main() {
     check('未知路径返回 404', missing.status === 404, `实际 ${missing.status}`)
   }
 
-  // ---------------------------------------------------------- 2. 地区封锁
-  console.log('\n[2] 中国大陆 IP 封锁（用 ?__geo= 模拟）')
+  // ---------------------------------------------------------- 2. 来源地区拦截
+  console.log('\n[2] 来源地区拦截（用 ?__geo= 模拟）')
   {
     const cn = await get('/?__geo=CN')
     const cnBody = await cn.text()
     check('CN 访问首页被拒（403）', cn.status === 403, `实际 ${cn.status}`)
-    check('封锁响应极简，不出现站点名', !cnBody.includes('休沐选'), cnBody.slice(0, 80))
-    check('封锁响应不提及站点的用途/立场',
+    check('拦截响应极简，不出现站点名', !cnBody.includes('休沐选'), cnBody.slice(0, 80))
+    check('拦截响应不提及站点的用途/立场',
       !cnBody.includes('双休') && !cnBody.includes('中国大陆'))
-    check('封锁响应不回显地区码', !cnBody.includes('CN'), cnBody.slice(0, 80))
-    check('封锁响应带 noindex', (cn.headers.get('x-robots-tag') || '').includes('noindex'))
-    check('封锁响应不缓存', (cn.headers.get('cache-control') || '').includes('no-store'))
+    check('拦截响应不回显地区码', !cnBody.includes('CN'), cnBody.slice(0, 80))
+    check('拦截响应带 noindex', (cn.headers.get('x-robots-tag') || '').includes('noindex'))
+    check('拦截响应不缓存', (cn.headers.get('cache-control') || '').includes('no-store'))
 
     const cnPost = await postForm('/comments?__geo=CN', { company_id: 1, content: '测试' })
     check('CN 的 POST 提交同样被拒（403）', cnPost.status === 403, `实际 ${cnPost.status}`)
@@ -294,7 +294,7 @@ async function main() {
     const aboutBody = await about.text()
     check('关于页说明数据全部来自用户上传', aboutBody.includes('全部来自像你一样的用户上传'))
     check('关于页说明指数算法', aboutBody.includes('半衰期'))
-    check('关于页已不出现地区封锁说明', !aboutBody.includes('中国大陆') && !aboutBody.includes('屏蔽'))
+    check('关于页已不出现地区拦截说明', !aboutBody.includes('中国大陆') && !aboutBody.includes('屏蔽'))
   }
 
   // ---------------------------------------------------------- 汇总

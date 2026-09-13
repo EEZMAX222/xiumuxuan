@@ -20,7 +20,6 @@
 - [你的数据存在哪里](#你的数据存在哪里)
 - [身份：注册、登录，或直接开始](#身份注册登录或直接开始)
 - [拿到一个可用的网址](#拿到一个可用的网址)
-- [中国大陆 IP 封锁](#中国大陆-ip-封锁)
 - [双休指数怎么算](#双休指数怎么算)
 - [项目结构](#项目结构)
 - [部署到 Cloudflare Workers](#部署到-cloudflare-workers)
@@ -41,8 +40,7 @@
 | **身份系统** | 三种入口：注册账号（一步到位）、账号密码登录、或只填昵称直接开始；游客身份可随时升级为账号 |
 | **内容自管** | 自己写的评论可编辑/删除，情报、产品关联、以及自己建立的厂家条目都可删除；`/me` 汇总我的贡献 |
 | **建立关联** | 用户可以提交「产品 → 厂家」的对应关系，也能新建厂家条目 |
-| **地区封锁** | 屏蔽中国大陆（`CN`）IP，港澳台不受影响 |
-| **移动端** | 响应式布局：窄屏单列、导航横向滚动、主按钮整行、输入字号 16px（防 iOS 聚焦缩放）、刘海屏安全区适配 |
+| **移动端** | 响应式布局：窄屏单列、导航自动换行、主按钮整行、输入字号 16px（防 iOS 聚焦缩放）、刘海屏安全区适配 |
 | **零依赖** | 无任何第三方运行时依赖，无需构建步骤，`node src/server.js` 即可运行 |
 | **双运行时** | 同一份业务代码跑在 Node（本地/自托管）和 Cloudflare Workers（边缘）上 |
 
@@ -94,9 +92,6 @@ npm run tunnel    # 自动准备 cloudflared 并打印 https://xxx.trycloudflare
 | `PORT` | `8787` | 监听端口 |
 | `HOST` | `0.0.0.0` | 监听地址 |
 | `DB_PATH` | `./data/xiumuxuan.db` | SQLite 文件路径 |
-| `BLOCKED_COUNTRIES` | `CN` | 被封锁的国家/地区码，逗号分隔 |
-| `GEO_POLICY` | `fail-open` | 拿不到国家码时：`fail-open` 放行 / `fail-closed` 拒绝 |
-| `GEO_DEBUG` | 非生产环境为 `1` | 允许用 `?__geo=CN` 模拟来源地区。**生产必须为 `0`** |
 | `IP_SALT` | 开发用默认值 | IP 哈希盐值，**生产必须改成随机长字符串** |
 
 ## 身份：注册、登录，或直接开始
@@ -178,14 +173,14 @@ npm run tunnel       # 终端 B：套一层 Cloudflare 隧道，打印公网地�
 ```
 
 会得到形如 `https://xxx-xxx-xxx.trycloudflare.com` 的 HTTPS 地址。
-它走 Cloudflare 边缘，所以服务器能拿到真实的 `CF-IPCountry`，**中国大陆 IP 打开会看到 403**。
+它走 Cloudflare 边缘，服务器能拿到真实的 `CF-IPCountry`。
 
 局限：地址随机、每次启动都变、Cloudflare 官方不保证在线时长，关掉窗口即失效。适合演示与临时分享。
 
 ### 方式二：固定地址（推荐长期使用）
 
 部署到 Cloudflare Workers + D1，得到一个永久的 `https://<你的域名>` 地址，
-同时获得最可靠的地理封锁（边缘 WAF 拦截）。一条命令流程：
+同时获得最可靠的边缘防护。一条命令流程：
 
 ```bash
 wrangler d1 create xiumuxuan     # 把返回的 database_id 填进 wrangler.toml
@@ -193,50 +188,7 @@ wrangler secret put IP_SALT      # 设置 IP 哈希盐值
 wrangler deploy                  # 部署
 ```
 
-完整步骤、WAF 国家封锁规则、验证清单与排错见 **[`docs/DEPLOY-CLOUDFLARE.md`](docs/DEPLOY-CLOUDFLARE.md)**。
-
-## 中国大陆 IP 封锁
-
-三层防护，逐层收紧：
-
-### 第 1 层：Cloudflare WAF 国家封锁（推荐，最彻底）
-
-在 Cloudflare 控制台 → 你的域名 → **Security → WAF → Custom rules** 新建规则：
-
-- **Expression**：`(ip.geoip.country eq "CN")`
-- **Action**：`Block`
-
-这条规则在**网络边缘**就拦掉，请求根本不会到达 Workers，因此不消耗配额，也无法被应用层绕过。配置细节见 [`docs/DEPLOY-CLOUDFLARE.md`](docs/DEPLOY-CLOUDFLARE.md)。
-
-### 第 2 层：应用层国家码校验
-
-`src/geo.js` 会读取：
-
-- Cloudflare Workers：`request.cf.country`（由边缘注入，**客户端无法伪造**）
-- 挂在 Cloudflare 代理之后的自建服务：`CF-IPCountry` 请求头
-- 自建反代：可自行注入 `X-Country-Code`
-
-命中封锁列表即返回一个**什么都不说的 403**：纯文本 `403 Forbidden`，带 `noindex` 与 `no-store`。
-不回显地区码、不出现站点名、不解释拦截原因——封锁页上的每一句说明，对来访者都是情报。
-任何路径、任何方法都会被拦（包括表单提交），诊断线索只写进服务端日志。
-
-Cloudflare 对**香港返回 `HK`、澳门 `MO`、台湾 `TW`**，所以封锁 `CN` 精确对应「中国大陆」，不会误伤港澳台。
-
-### 第 3 层：fail-closed 兜底（可选）
-
-如果你完全自托管、且没有 Cloudflare 代理，可以设 `GEO_POLICY=fail-closed`：
-**只要拿不到国家码就一律拒绝**。此时本地开发请保留 `GEO_DEBUG=1`，否则连自己都会被挡在门外。
-
-### 本地怎么验证封锁生效
-
-```bash
-curl -i "http://127.0.0.1:8787/?__geo=CN"   # → 403
-curl -i "http://127.0.0.1:8787/?__geo=HK"   # → 200（港澳台不受影响）
-curl -i "http://127.0.0.1:8787/?__geo=US"   # → 200
-```
-
-> `?__geo=` 只在 `GEO_DEBUG=1` 时生效，且仅用于本地开发。生产环境必须关闭，
-> 否则在没有 Cloudflare 头的场景下会被伪造绕过。
+完整步骤、验证清单与排错见 **[`docs/DEPLOY-CLOUDFLARE.md`](docs/DEPLOY-CLOUDFLARE.md)**。
 
 ## 双休指数怎么算
 
@@ -272,7 +224,7 @@ xiumuxuan/
 │  ├─ schema.js        数据库结构（唯一来源，同时用于 D1 与 node:sqlite）
 │  ├─ db.js            D1 适配器 + schema 应用（会被 Workers 打包）
 │  ├─ db-sqlite.js     node:sqlite 适配器（仅 Node 使用，不进入 Worker 包）
-│  ├─ geo.js           国家/地区封锁（Web 标准 API，双运行时通用）
+│  ├─ geo.js           来源地区访问控制（Web 标准 API，双运行时通用）
 │  ├─ session.js       游客身份：cookie 解析、令牌哈希、会话下发与撤销
 │  ├─ logic.js         归一化、校验、双休指数、限流、时间格式化
 │  ├─ router.js        极简路径路由（静态段优先）
@@ -302,7 +254,7 @@ xiumuxuan/
 
 ## 部署到 Cloudflare Workers
 
-推荐方式（免费额度足够，且能获得最可靠的地理封锁）：
+推荐方式（免费额度足够）：
 
 ```bash
 npm install -g wrangler      # 或 npx wrangler
@@ -312,12 +264,11 @@ wrangler d1 create xiumuxuan            # 记下返回的 database_id
 # 把 database_id 填入 wrangler.toml
 
 wrangler secret put IP_SALT             # 输入一个随机长字符串
-# 把 wrangler.toml 里的 GEO_DEBUG 改成 "0"
 
 wrangler deploy
 ```
 
-完整步骤、WAF 规则配置、验证方法与排错见 **[`docs/DEPLOY-CLOUDFLARE.md`](docs/DEPLOY-CLOUDFLARE.md)**。
+完整步骤、验证方法与排错见 **[`docs/DEPLOY-CLOUDFLARE.md`](docs/DEPLOY-CLOUDFLARE.md)**。
 
 ## 防滥用与隐私
 
@@ -347,21 +298,19 @@ wrangler deploy
 | 项目 | 借鉴了什么 | 为什么没有直接采用 |
 | --- | --- | --- |
 | [**paveg/hono-cf-access**](https://github.com/paveg/hono-cf-access) | Workers 上基于 `request.cf` 做地理访问控制的中间件思路 —— `src/geo.js` 的核心逻辑来源于此 | 它绑定 Hono 框架，而本项目要零依赖；逻辑重写为纯函数 |
-| [**Kabi10/ratemyemployer**](https://github.com/Kabi10/ratemyemployer) | 雇主评价平台的信息架构：评分聚合 + 评价流 + 分布图 | 它用 Next.js + Supabase，需要构建步骤与外部账号；本项目要能 `node src/server.js` 直接跑，并且要在边缘做地理封锁 |
+| [**Kabi10/ratemyemployer**](https://github.com/Kabi10/ratemyemployer) | 雇主评价平台的信息架构：评分聚合 + 评价流 + 分布图 | 它用 Next.js + Supabase，需要构建步骤与外部账号；本项目要能 `node src/server.js` 直接跑，并且要在边缘做访问控制 |
 | [**sandviklee/Bedrev**](https://github.com/sandviklee/Bedrev) | 职场评价类产品的字段设计（岗位、在职状态） | 同上，技术栈不匹配 |
 | [**996.ICU**](https://github.com/996icu/996.ICU) / [**snowwolfjay/no996**](https://github.com/snowwolfjay/no996) | 中文语境下「加班文化众包黑名单」的数据形态与社区经验：众包评价极易被灌水与报复性差评污染，得靠机制而不是靠信任来兜底 | 它们是静态名单，没有上传 / 评论 / 搜索的产品形态。本项目最初照搬了它的「信源可信度」分层思路，现已取消该维度（见上文），改由限流、去重与样本门槛兜底 |
 
-另外参考了 Cloudflare 官方关于 [Workers 地理定位](https://developers.cloudflare.com/workers/runtime-apis/request/#incomingrequestcfproperties)
-与 [WAF 自定义规则](https://developers.cloudflare.com/waf/custom-rules/) 的文档。
+另外参考了 Cloudflare 官方关于 [Workers 运行时 API](https://developers.cloudflare.com/workers/runtime-apis/) 的文档。
 
 ## 已知局限
 
 诚实地说清楚这个站点做不到什么：
 
-1. **地理封锁不是绝对的。** 它基于 IP 定位。身处中国大陆的用户使用境外 VPN / 代理仍然可以访问，我们无法也没有试图做到物理隔绝。Cloudflare 的 IP 国家库本身也存在少量误判。
-2. **数据未经核实。** 本站不审核任何上传内容，也不区分信息来源。一家公司可能被前员工报复性差评，也可能被公关刷好评——频率限制、内容去重与样本门槛只是缓解，不是根治。
-3. **同一厂家内部差异巨大。** 办公室双休、产线大小周是常态。上传时写清部门和岗位，比什么都重要。
-4. **没设密码的游客身份无法找回，也没有举报与申诉入口。** 设了账号密码就能登录回来；但若一直以游客身份使用，清除 Cookie 就等于永久失去身份，连同对自己内容的编辑权。另外，被恶意差评的厂家无处申辩——这是下一步最该补的。
+1. **数据未经核实。** 本站不审核任何上传内容，也不区分信息来源。一家公司可能被前员工报复性差评，也可能被公关刷好评——频率限制、内容去重与样本门槛只是缓解，不是根治。
+2. **同一厂家内部差异巨大。** 办公室双休、产线大小周是常态。上传时写清部门和岗位，比什么都重要。
+3. **没设密码的游客身份无法找回，也没有举报与申诉入口。** 设了账号密码就能登录回来；但若一直以游客身份使用，清除 Cookie 就等于永久失去身份，连同对自己内容的编辑权。另外，被恶意差评的厂家无处申辩——这是下一步最该补的。
 
 ## 免责声明
 
